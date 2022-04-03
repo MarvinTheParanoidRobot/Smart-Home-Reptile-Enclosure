@@ -1,12 +1,12 @@
  #include <FS.h>                   //this needs to be first, or it all crashes and burns...
 
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-//needed for library
+
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
-#include <PubSubClient.h>
+#include <PubSubClient.h>         //https://github.com/knolleary/pubsubclient
 
 //flag for saving data
 bool shouldSaveConfig = false;
@@ -14,10 +14,11 @@ bool shouldSaveConfig = false;
 //define your default values here, if there are different values in config.json, they are overwritten.
 //char mqtt_server[40];
 #define mqtt_server       "xxx.cloudmqtt.com"
-#define mqtt_port         "12345"
-#define mqtt_user         "mqtt_user"
-#define mqtt_pass         "mqtt_pass"
-#define humidity_topic    "sensor/humidity"
+#define mqtt_port         "12345" //mqtt port number usually 8123
+#define mqtt_user         "mqtt_user" //mqtt username
+#define mqtt_pass         "mqtt_pass" //mqtt password
+#define device_type       "Power Plug" //device type
+//#define humidity_topic    "sensor/humidity"
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -28,7 +29,7 @@ void saveConfigCallback () {
   shouldSaveConfig = true;
 }
 
-
+//****************************************************************************************************
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -63,6 +64,7 @@ void setup() {
           strcpy(mqtt_port, json["mqtt_port"]);
           strcpy(mqtt_user, json["mqtt_user"]);
           strcpy(mqtt_pass, json["mqtt_pass"]);
+          strcpy(device_type, json["device_type"]);
 
         } else {
           Serial.println("failed to load json config");
@@ -84,8 +86,8 @@ void setup() {
   WiFiManagerParameter custom_mqtt_user("user", "mqtt user", mqtt_user, 20);
   WiFiManagerParameter custom_mqtt_pass("pass", "mqtt pass", mqtt_pass, 20);
   
-  const char* device_type = "<br/><label for='device_type'>Choose the device type:</label><br/><select name='device_type' id='device_type'><br/><option value='Power Plug'>Power Plug</option><br/><option value='12V Switch'>12V Switch</option><br/><option value='LED Lights' selected>LED Lights</option></select>";
-  WiFiManagerParameter custom_device_type(device_type);
+  const char* device_type_menu = "<br/><label for='device_type'>Choose the device type:</label><br/><select name='device_type' id='device_type'><br/><option value='Power Plug'>Power Plug</option><br/><option value='12V Switch'>12V Switch</option><br/><option value='LED Lights' selected>LED Lights</option></select>";
+  WiFiManagerParameter custom_device_type(device_type_menu);
 
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
@@ -143,6 +145,7 @@ void setup() {
   strcpy(mqtt_port, custom_mqtt_port.getValue());
   strcpy(mqtt_user, custom_mqtt_user.getValue());
   strcpy(mqtt_pass, custom_mqtt_pass.getValue());
+  strcpy(device_type, custom_device_type.getValue());
  // strcpy(blynk_token, custom_blynk_token.getValue());
 
   //save the custom parameters to FS
@@ -153,7 +156,7 @@ void setup() {
     json["mqtt_port"] = mqtt_port;
     json["mqtt_user"] = mqtt_user;
     json["mqtt_pass"] = mqtt_pass;
-
+    json["device_type"] = device_type;
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
       Serial.println("failed to open config file for writing");
@@ -169,7 +172,7 @@ void setup() {
 
   Serial.println("local ip");
   Serial.println(WiFi.localIP());
-//  client.setServer(mqtt_server, 12025);
+
   const uint16_t mqtt_port_x = atoi(mqtt_port); 
   client.setServer(mqtt_server, mqtt_port_x);
 }
@@ -194,16 +197,20 @@ void reconnect() {
   }
 }
 
-
+//********************************************************************************************************************************
+/*
 bool checkBound(float newValue, float prevValue, float maxDiff) {
   return !isnan(newValue) &&
          (newValue < prevValue - maxDiff || newValue > prevValue + maxDiff);
 }
+*/
 
 long lastMsg = 0;
+/*
 float temp = 0.0;
 float hum = 0.0;
 float diff = 1.0;
+*/
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -217,15 +224,18 @@ void loop() {
   if (now - lastMsg > 1000) {
     lastMsg = now;
 
-    float newTemp = 10;
-    float newHum = 20;
+      /*
+      float newTemp = 10;
+      float newHum = 20;
 
 
-    if (checkBound(newHum, hum, diff)) {
+   
+      if (checkBound(newHum, hum, diff)) {
       hum = newHum;
       Serial.print("New humidity:");
       Serial.println(String(hum).c_str());
       client.publish(humidity_topic, String(hum).c_str(), true);
+      */
     }
   }
 }
