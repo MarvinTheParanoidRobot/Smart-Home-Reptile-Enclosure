@@ -1,4 +1,4 @@
- #include <FS.h>                   //this needs to be first, or it all crashes and burns...
+#include <FS.h>                   //this needs to be first, or it all crashes and burns...
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 #include "Global.h"
 #include "Configuration.h"
@@ -18,11 +18,28 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP,"pool.ntp.org");
+  //WiFiManager
+  //Local intialization. Once its business is done, there is no need to keep it around
+WiFiManager wifiManager;
+
+WiFiManagerParameter custom_device_type(device_type_menu);
 
 //callback notifying us of the need to save config
 void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
+}
+void saveParamCallback(){
+  strcpy(device_type,getParam("config_selection").c_str() );
+}
+String getParam(String name) {
+  //read parameter from server, for customhmtl input
+  String value;
+  if (wifiManager.server->hasArg(name)) {
+    value = wifiManager.server->arg(name);
+  }
+  Serial.println(value);
+  return value;
 }
 
 //****************************************************************************************************
@@ -32,8 +49,8 @@ void setup() {
   Serial.println();
 
   //clean config for testing 
-  SPIFFS.remove("/config.json");
-  
+  //SPIFFS.remove("/config.json");
+  //SPIFFS.format();
   //read configuration from FS json
   Serial.println("mounting FS...");
 
@@ -50,18 +67,25 @@ void setup() {
         std::unique_ptr<char[]> buf(new char[size]);
 
         configFile.readBytes(buf.get(), size);
-        DynamicJsonDocument json(1024);
+        DynamicJsonDocument json(4096);
         
         auto error =deserializeJson(json, buf.get());
         serializeJson(json, Serial);
         if (!error) {
           Serial.println("\nparsed json");
+           Serial.println("fail 1");
           strcpy(mqtt_server, json["mqtt_server"]);
+           Serial.println("fail 2");
           strcpy(mqtt_port, json["mqtt_port"]);
+           Serial.println("fail 3");
           strcpy(mqtt_user, json["mqtt_user"]);
+           Serial.println("fail 4");
           strcpy(mqtt_pass, json["mqtt_pass"]);
+           Serial.println("fail 5");
           strcpy(device_type, json["device_type"]);
+           Serial.println("fail 6");
           strcpy(device_name, json["device_name"]);
+           Serial.println("fail 7");
 
         } else {
           Serial.println("failed to load json config");
@@ -74,7 +98,6 @@ void setup() {
   //end read
 
 
-
   // The extra parameters to be configured (can be either global or just in the setup)
   // After connecting, parameter.getValue() will get you the configured value
   // id/name placeholder/prompt default length
@@ -82,19 +105,17 @@ void setup() {
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
   WiFiManagerParameter custom_mqtt_user("user", "mqtt user", mqtt_user, 20);
   WiFiManagerParameter custom_mqtt_pass("pass", "mqtt pass", mqtt_pass, 20);
-  WiFiManagerParameter custom_device_name("device name", "device name", device_name, 40);
-  WiFiManagerParameter custom_device_type(device_type_menu);
+  WiFiManagerParameter custom_device_name("name", "device name", device_name, 40);
+ 
 
-  //WiFiManager
-  //Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
 
-// Reset Wifi settings for testing  
-  wifiManager.resetSettings();
 
+  // Reset Wifi settings for testing  
+  //wifiManager.resetSettings();
+  wifiManager.setSaveParamsCallback(saveParamCallback);
   //set config save notify callback
   wifiManager.setSaveConfigCallback(saveConfigCallback);
-
+  
   //set static ip
   //wifiManager.setSTAStaticIPConfig(IPAddress(10,0,1,99), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
   
@@ -104,11 +125,12 @@ void setup() {
   wifiManager.addParameter(&custom_mqtt_user);
   wifiManager.addParameter(&custom_mqtt_pass);
   wifiManager.addParameter(&custom_device_name);
+ 
   wifiManager.addParameter(&custom_device_type);
-  
 
+  
   //reset settings - for testing
-  //wifiManager.resetSettings();
+   //wifiManager.resetSettings();
 
   //set minimum quality of signal so it ignores AP's under that quality
   //defaults to 8%
@@ -118,11 +140,11 @@ void setup() {
   //useful to make it all retry or go to sleep
   //in seconds
   //wifiManager.setTimeout(120);
- 
+  std::vector<const char *> wm_menu  = {"wifi", "exit"};
   wifiManager.setShowInfoUpdate(false);
   wifiManager.setShowInfoErase(false);
   wifiManager.setMenu(wm_menu);
- 
+
   //fetches ssid and pass and tries to connect
   //if it does not connect it starts an access point with the specified name
   //here  "AutoConnectAP"
@@ -137,20 +159,25 @@ void setup() {
 
   //if you get here you have connected to the WiFi
   Serial.println("connected...yeey :)");
-
   //read updated parameters
   strcpy(mqtt_server, custom_mqtt_server.getValue());
+
   strcpy(mqtt_port, custom_mqtt_port.getValue());
+
   strcpy(mqtt_user, custom_mqtt_user.getValue());
+
   strcpy(mqtt_pass, custom_mqtt_pass.getValue());
+
   strcpy(device_name, custom_device_name.getValue());
-  strcpy(device_type, custom_device_type.getValue());
+
+
+
  
 
   //save the custom parameters to FS
   if (shouldSaveConfig) {
     Serial.println("saving config");
-    DynamicJsonDocument json(1024);
+    DynamicJsonDocument json(4096);
     json["mqtt_server"] = mqtt_server;
     json["mqtt_port"] = mqtt_port;
     json["mqtt_user"] = mqtt_user;
@@ -164,42 +191,45 @@ void setup() {
 
  
     serializeJson(json, Serial);
+ 
     serializeJson(json, configFile);
-    
+
     configFile.close();
+ 
     //end save
   }
 
   Serial.println("local ip");
   Serial.println(WiFi.localIP());
 
-  const uint16_t mqtt_port_x = atoi(mqtt_port); 
-  client.setServer(mqtt_server, mqtt_port_x);
-  itoa(ESP.getChipId(),device_id,10);
-  (const char*)device_id;
-  
-  strcpy(will_Topic,device_id);
-  strcat(will_Topic,"/");
-  strcat(will_Topic,"device_status");
-  (const char*)will_Topic;
-  
-  strcpy(device_type_topic,device_id);
-  strcat(device_type_topic,"/");
-  strcat(device_type_topic,"device_type_topic");
-  (const char*)device_type_topic;
-  
-  strcpy(device_name_topic,device_id);
-  strcat(device_name_topic,"/");
-  strcat(device_name_topic,"device_name_topic");
-  (const char*)device_name_topic;
-  
-  strcpy(device_timestamp,device_id);
-  strcat(device_timestamp,"/");
-  strcat(device_timestamp,"device_timestamp");
-  (const char*)device_timestamp;
-  
+
+
+  EspId=String(ESP.getChipId(), HEX);
+  device_id=EspId.c_str();
+ 
+
+  root_will=root_will+device_id+"/device_status";
+  will_Topic=root_will.c_str();
+
+
+  root_type=root_type+device_id+"/device_type";
+  device_type_topic=root_type.c_str();
+
+
+
+  root_name=root_name+device_id+"/device_name";
+  device_name_topic=root_name.c_str();
+
+
+  root_timestamp=root_timestamp+device_id+"/device_timestamp";
+  device_timestamp_topic=root_timestamp.c_str();
+
   timeClient.begin();
   timeClient.setTimeOffset(GMT_offset*3600);
+  const uint16_t mqtt_port_x = atoi(mqtt_port); 
+ 
+  client.setServer(mqtt_server, mqtt_port_x);
+ 
 }
 
 
@@ -210,6 +240,7 @@ void reconnect() {
     // Attempt to connect
     // If you do not want to use a username and password, change next line to
     // if (client.connect("ESP8266Client")) {
+
     if (client.connect(device_id, mqtt_user, mqtt_pass, will_Topic, will_QoS, will_Retain, will_Message, clean_Session)) {
       Serial.println("connected");
     } else {
@@ -226,7 +257,7 @@ void reconnect() {
 
 bool publish_meta_data(){
   timeClient.update();
-  if(client.publish(device_type_topic,device_type,device_type_retain) || client.publish(device_name_topic,device_name,device_name_retain) || client.publish(will_Topic,device_status,will_Retain) || client.publish(device_timestamp,(const char *)timeClient.getFormattedTime().c_str(),device_timestamp_retain)){
+  if(client.publish(device_type_topic,device_type,device_type_retain) && client.publish(device_name_topic,device_name,device_name_retain) && client.publish(will_Topic,device_status,will_Retain) && client.publish(device_timestamp_topic,timeClient.getFormattedTime().c_str(),device_timestamp_retain)){
     return true;
   }
   else{
@@ -250,7 +281,12 @@ void loop() {
   long now = millis();
   if (now - lastMsg > 1000) {
     lastMsg = now;
-    publish_meta_data();
-
+    
+    if(publish_meta_data()){
+      Serial.println("Successfully published meta data");
+    }
+    else{
+      Serial.println("Failed publishing meta data");
+    }
   }
 }
