@@ -15,3 +15,6 @@
 #define device_timestamp_retain   true                  //device last timestamp retain flag
 #define clean_Session             true                  //set device to clean session since its only publishing
 #define GMT_offset                1                     //timezone offset from GMT
+
+#define URL_fw_Version "MarvinTheParanoidRobot/Smart-Home-Reptile-Enclosure/blob/main/ESP_Device_Softwareversion.txt"
+#define URL_fw_Bin "https://raw.githubusercontent.com/MarvinTheParanoidRobot/Smart-Home-Reptile-Enclosure/blob/main/firmware.bin"

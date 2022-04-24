@@ -10,16 +10,18 @@
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
+#include <WiFiClientSecure.h>
+#include <CertStoreBearSSL.h>
 
 
-
-
+BearSSL::CertStore certStore;
+X509List cert(trustRoot);
 WiFiClient espClient;
 PubSubClient client(espClient);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP,"pool.ntp.org");
-  //WiFiManager
-  //Local intialization. Once its business is done, there is no need to keep it around
 WiFiManager wifiManager;
 
 WiFiManagerParameter custom_device_type(device_type_menu);
@@ -41,6 +43,52 @@ String getParam(String name) {
   Serial.println(value);
   return value;
 }
+void FirmwareUpdate(){  
+  WiFiClientSecure updateClient;
+  updateClient.setTrustAnchors(&cert);
+  if (!updateClient.connect(host, httpsPort)) {
+    Serial.println("Connection failed");
+    return;
+  }
+  updateClient.print(String("GET ") + URL_fw_Version + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "User-Agent: BuildFailureDetectorESP8266\r\n" +
+               "Connection: close\r\n\r\n");
+  while (updateClient.connected()) {
+    String line = updateClient.readStringUntil('\n');
+    if (line == "\r") {
+      //Serial.println("Headers received");
+      break;
+    }
+  }
+  String payload = updateClient.readStringUntil('\n');
+
+  payload.trim();
+  if(payload.equals(FirmwareVer) )
+  {   
+     Serial.println("Device already on latest firmware version"); 
+  }
+  else
+  {
+    Serial.println("New firmware detected");
+    ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW); 
+    t_httpUpdate_return ret = ESPhttpUpdate.update(updateClient, URL_fw_Bin);
+        
+    switch (ret) {
+      case HTTP_UPDATE_FAILED:
+        Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+        break;
+
+      case HTTP_UPDATE_NO_UPDATES:
+        Serial.println("HTTP_UPDATE_NO_UPDATES");
+        break;
+
+      case HTTP_UPDATE_OK:
+        Serial.println("HTTP_UPDATE_OK");
+        break;
+    } 
+  }
+}  
 
 //****************************************************************************************************
 void setup() {
@@ -211,23 +259,21 @@ void setup() {
   root_will=root_will+device_id+"/device_status";
   will_Topic=root_will.c_str();
 
-
   root_type=root_type+device_id+"/device_type";
   device_type_topic=root_type.c_str();
-
-
 
   root_name=root_name+device_id+"/device_name";
   device_name_topic=root_name.c_str();
 
-
   root_timestamp=root_timestamp+device_id+"/device_timestamp";
   device_timestamp_topic=root_timestamp.c_str();
 
+  
   timeClient.begin();
   timeClient.setTimeOffset(GMT_offset*3600);
+  FirmwareUpdate();
+  
   const uint16_t mqtt_port_x = atoi(mqtt_port); 
- 
   client.setServer(mqtt_server, mqtt_port_x);
  
 }
