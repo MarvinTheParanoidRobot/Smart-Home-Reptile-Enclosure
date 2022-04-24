@@ -47,7 +47,7 @@ void FirmwareUpdate(){
   WiFiClientSecure updateClient;
   updateClient.setTrustAnchors(&cert);
   if (!updateClient.connect(host, httpsPort)) {
-    Serial.println("Connection failed");
+    Serial.println("Github Connection failed");
     return;
   }
   updateClient.print(String("GET ") + URL_fw_Version + " HTTP/1.1\r\n" +
