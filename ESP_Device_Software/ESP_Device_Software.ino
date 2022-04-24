@@ -73,19 +73,19 @@ void setup() {
         serializeJson(json, Serial);
         if (!error) {
           Serial.println("\nparsed json");
-           Serial.println("fail 1");
+           
           strcpy(mqtt_server, json["mqtt_server"]);
-           Serial.println("fail 2");
+          
           strcpy(mqtt_port, json["mqtt_port"]);
-           Serial.println("fail 3");
+           
           strcpy(mqtt_user, json["mqtt_user"]);
-           Serial.println("fail 4");
+           
           strcpy(mqtt_pass, json["mqtt_pass"]);
-           Serial.println("fail 5");
+           
           strcpy(device_type, json["device_type"]);
-           Serial.println("fail 6");
+           
           strcpy(device_name, json["device_name"]);
-           Serial.println("fail 7");
+          
 
         } else {
           Serial.println("failed to load json config");
@@ -130,7 +130,7 @@ void setup() {
 
   
   //reset settings - for testing
-   //wifiManager.resetSettings();
+   wifiManager.resetSettings();
 
   //set minimum quality of signal so it ignores AP's under that quality
   //defaults to 8%
