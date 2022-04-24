@@ -54,16 +54,24 @@ void FirmwareUpdate(){
                "Host: " + host + "\r\n" +
                "User-Agent: BuildFailureDetectorESP8266\r\n" +
                "Connection: close\r\n\r\n");
+  Serial.println(String("GET ") + URL_fw_Version + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "User-Agent: BuildFailureDetectorESP8266\r\n" +
+               "Connection: close\r\n\r\n");
   while (updateClient.connected()) {
     String line = updateClient.readStringUntil('\n');
     if (line == "\r") {
-      //Serial.println("Headers received");
+      Serial.println("Headers received");
       break;
     }
   }
   String payload = updateClient.readStringUntil('\n');
-
   payload.trim();
+  Serial.print("GitHub Firmware Version:");
+  Serial.println(payload);
+  Serial.print("Device Firmware Version:");
+  Serial.println(FirmwareVer);
+  
   if(payload.equals(FirmwareVer) )
   {   
      Serial.println("Device already on latest firmware version"); 
