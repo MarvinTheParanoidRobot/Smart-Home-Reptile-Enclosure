@@ -30,7 +30,7 @@ const char* device_type_topic;
 const char* device_name_topic;     
 const char* device_timestamp_topic;
 
-const String FirmwareVer={"1.0"}; 
+const String FirmwareVer={"1.1"}; 
 const char* host = "raw.githubusercontent.com";
 const int httpsPort = 443;
 
