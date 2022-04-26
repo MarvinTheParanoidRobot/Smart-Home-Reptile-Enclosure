@@ -17,4 +17,4 @@
 #define GMT_offset                1                     //timezone offset from GMT
 
 #define URL_fw_Version "MarvinTheParanoidRobot/Smart-Home-Reptile-Enclosure/main/ESP_Device_Software/version.txt"
-#define URL_fw_Bin "https://raw.githubusercontent.com/MarvinTheParanoidRobot/Smart-Home-Reptile-Enclosure/main/ESP_Device_Software/firmware.bin"
+#define URL_fw_Bin "https://raw.githubusercontent.com/MarvinTheParanoidRobot/Smart-Home-Reptile-Enclosure/main/ESP_Device_Software/firmware.bin.gz"
